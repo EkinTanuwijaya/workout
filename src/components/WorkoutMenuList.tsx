@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   AlertTriangle,
   ArrowDown,
@@ -5,6 +6,7 @@ import {
   Check,
   Copy,
   Info,
+  Minus,
   PlayCircle,
   Plus,
   RefreshCw,
@@ -55,15 +57,81 @@ export function WorkoutMenuList({
   onOpenAddModal,
   onCopyMenu,
 }: WorkoutMenuListProps) {
-  const handleSetsChange = (item: WorkoutItem, raw: string) => {
-    const num = Math.max(1, Math.min(10, parseInt(raw, 10) || 1));
-    const nextCompleted = Array.from({ length: num }, (_, i) =>
+  const [draftSets, setDraftSets] = useState<Record<string, string>>({});
+  const [draftRest, setDraftRest] = useState<Record<string, string>>({});
+
+  const commitSets = (item: WorkoutItem, num: number) => {
+    const clamped = Math.max(1, Math.min(10, num));
+    const nextCompleted = Array.from({ length: clamped }, (_, i) =>
       Boolean(item.completedSets[i])
     );
     onUpdateItem(item.instanceId, {
-      sets: num,
+      sets: clamped,
       completedSets: nextCompleted,
     });
+  };
+
+  const handleSetsInputChange = (item: WorkoutItem, raw: string) => {
+    const digitsOnly = raw.replace(/[^0-9]/g, '');
+    setDraftSets((prev) => ({ ...prev, [item.instanceId]: digitsOnly }));
+    if (digitsOnly !== '') {
+      const parsed = parseInt(digitsOnly, 10);
+      if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 10) {
+        commitSets(item, parsed);
+      }
+    }
+  };
+
+  const handleSetsBlur = (item: WorkoutItem) => {
+    const raw = draftSets[item.instanceId];
+    if (raw !== undefined) {
+      const parsed = parseInt(raw, 10);
+      commitSets(item, Number.isNaN(parsed) ? item.sets : parsed);
+      setDraftSets((prev) => {
+        const next = { ...prev };
+        delete next[item.instanceId];
+        return next;
+      });
+    }
+  };
+
+  const handleStepSets = (item: WorkoutItem, delta: -1 | 1) => {
+    setDraftSets((prev) => {
+      const next = { ...prev };
+      delete next[item.instanceId];
+      return next;
+    });
+    commitSets(item, item.sets + delta);
+  };
+
+  const handleRestInputChange = (item: WorkoutItem, raw: string) => {
+    const digitsOnly = raw.replace(/[^0-9]/g, '');
+    setDraftRest((prev) => ({ ...prev, [item.instanceId]: digitsOnly }));
+    if (digitsOnly !== '') {
+      const parsed = parseInt(digitsOnly, 10);
+      if (!Number.isNaN(parsed)) {
+        onUpdateItem(item.instanceId, {
+          restSeconds: Math.min(300, Math.max(0, parsed)),
+        });
+      }
+    }
+  };
+
+  const handleRestBlur = (item: WorkoutItem) => {
+    const raw = draftRest[item.instanceId];
+    if (raw !== undefined) {
+      const parsed = parseInt(raw, 10);
+      onUpdateItem(item.instanceId, {
+        restSeconds: Number.isNaN(parsed)
+          ? item.restSeconds
+          : Math.min(300, Math.max(0, parsed)),
+      });
+      setDraftRest((prev) => {
+        const next = { ...prev };
+        delete next[item.instanceId];
+        return next;
+      });
+    }
   };
 
   return (
@@ -228,16 +296,43 @@ export function WorkoutMenuList({
                 )}
 
                 <div className="exercise-inputs">
-                  <label className="mini-field">
+                  <div className="mini-field">
                     <span>Sets</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={item.sets}
-                      onChange={(e) => handleSetsChange(item, e.target.value)}
-                    />
-                  </label>
+                    <div className="sets-stepper">
+                      <button
+                        type="button"
+                        className="stepper-btn"
+                        onClick={() => handleStepSets(item, -1)}
+                        disabled={item.sets <= 1}
+                        aria-label="Decrease sets"
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        aria-label="Sets"
+                        value={
+                          draftSets[item.instanceId] ?? String(item.sets)
+                        }
+                        onFocus={(e) => e.currentTarget.select()}
+                        onChange={(e) =>
+                          handleSetsInputChange(item, e.target.value)
+                        }
+                        onBlur={() => handleSetsBlur(item)}
+                      />
+                      <button
+                        type="button"
+                        className="stepper-btn"
+                        onClick={() => handleStepSets(item, 1)}
+                        disabled={item.sets >= 10}
+                        aria-label="Increase sets"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
+                  </div>
                   <label className="mini-field">
                     <span>Reps</span>
                     <input
@@ -253,6 +348,7 @@ export function WorkoutMenuList({
                     <span>Weight ({unit})</span>
                     <input
                       type="text"
+                      inputMode="decimal"
                       value={item.weight}
                       onChange={(e) =>
                         onUpdateItem(item.instanceId, {
@@ -265,19 +361,17 @@ export function WorkoutMenuList({
                   <label className="mini-field">
                     <span>Rest (sec)</span>
                     <input
-                      type="number"
-                      min={15}
-                      max={300}
-                      step={15}
-                      value={item.restSeconds}
-                      onChange={(e) =>
-                        onUpdateItem(item.instanceId, {
-                          restSeconds: Math.max(
-                            0,
-                            parseInt(e.target.value, 10) || 0
-                          ),
-                        })
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={
+                        draftRest[item.instanceId] ?? String(item.restSeconds)
                       }
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) =>
+                        handleRestInputChange(item, e.target.value)
+                      }
+                      onBlur={() => handleRestBlur(item)}
                     />
                   </label>
                 </div>

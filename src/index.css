@@ -1386,3 +1386,49 @@ input {
   text-decoration: none;
   width: 100%;
 }
+
+/* Mobile-friendly Sets Stepper */
+.sets-stepper {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.sets-stepper:focus-within {
+  border-color: var(--accent);
+}
+
+.sets-stepper input {
+  border: none;
+  border-radius: 0;
+  text-align: center;
+  padding: 7px 4px;
+  min-width: 0;
+  background: transparent;
+}
+
+.stepper-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 33px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.stepper-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.stepper-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
